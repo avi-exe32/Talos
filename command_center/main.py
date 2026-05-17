@@ -72,6 +72,17 @@ def approve_mitigation():
 def reset_demo():
     try:
         db.reset_demo()
+        
+        # Also ensure the vendor portal is reset back to a clean state
+        import requests
+        try:
+            health_res = requests.get("https://talos-vsp-78550706553.asia-south1.run.app/health", timeout=5).json()
+            if health_res.get("is_corrupted"):
+                requests.post("https://talos-vsp-78550706553.asia-south1.run.app/toggle_corruption", timeout=5)
+        except Exception as e:
+            # Ignore VSP reachability errors during reset so we don't crash
+            pass
+            
         return {"status": "success"}
     except Exception as e:
         return {"status": "error", "message": str(e)}
