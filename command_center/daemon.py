@@ -116,6 +116,14 @@ class TalosDaemon(threading.Thread):
                 logger.info("[Daemon] Pipeline complete. Awaiting human approval (Phase 5).")
             else:
                 logger.info("[Daemon] Remediation is Pending. Resuming normal polling of broken stream.")
+                
+        elif scout_result["status"] == "NOMINAL":
+            # If the stream recovered on its own, auto-cancel any pending mitigations!
+            pending = db.get_pending_logs()
+            if pending:
+                logger.info("[Daemon] Stream recovered organically. Canceling pending mitigations.")
+                with db.get_conn() as conn:
+                    conn.execute(db.text("DELETE FROM agent_log WHERE lifecycle_state = 'Pending'"))
 
     def stop(self):
         self._stop_event.set()
