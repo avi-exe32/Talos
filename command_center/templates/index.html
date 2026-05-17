@@ -49,6 +49,7 @@
             flex-direction: column;
             box-shadow: 0 0 15px rgba(0,0,0,0.8);
             position: relative;
+            overflow: hidden;
         }
         .panel-title {
             font-size: 1.2rem;
@@ -134,7 +135,10 @@
     </style>
 </head>
 <body>
-    <h1>TALOS_COMMAND_CENTER</h1>
+    <div style="display: flex; justify-content: space-between; align-items: center; padding-right: 20px;">
+        <h1>TALOS_COMMAND_CENTER</h1>
+        <button id="reset-demo-btn" style="padding: 8px 15px; font-family: 'JetBrains Mono', monospace; background: transparent; border: 1px solid #666; color: #666; cursor: pointer; border-radius: 3px; transition: 0.3s; height: 40px;" onmouseover="this.style.color='#fff'; this.style.borderColor='#fff'" onmouseout="this.style.color='#666'; this.style.borderColor='#666'">RESET DEMO</button>
+    </div>
     
     <div class="dashboard">
         <!-- LEFT: Live Vendor Stream -->
@@ -150,6 +154,7 @@ Initializing uplink...
         <!-- RIGHT: Agent Audit Log -->
         <div class="panel">
             <h2 class="panel-title">Agent Audit Log</h2>
+            <button id="approve-btn" style="display: none; padding: 15px; font-size: 1.2rem; font-weight: bold; font-family: 'JetBrains Mono', monospace; cursor: pointer; background: #222; color: #ffaa00; border: 2px solid #ffaa00; box-shadow: 0 0 15px rgba(255, 170, 0, 0.8); border-radius: 5px; margin-bottom: 15px; text-transform: uppercase; transition: all 0.3s ease;">⚡ AUTHORIZE MITIGATION ⚡</button>
             <div id="terminal-log">
                 <div style="color: #666;">> Awaiting audit logs...</div>
             </div>
@@ -218,11 +223,54 @@ Initializing uplink...
                             terminal.scrollTop = terminal.scrollHeight;
                         }
                     }
+                } else {
+                    if (terminal.innerHTML !== '<div style="color: #666;">> Awaiting audit logs...</div>') {
+                        terminal.innerHTML = '<div style="color: #666;">> Awaiting audit logs...</div>';
+                    }
+                }
+
+                // Show or hide Approval button
+                const btn = document.getElementById('approve-btn');
+                if (data.has_pending) {
+                    btn.style.display = 'block';
+                } else {
+                    btn.style.display = 'none';
                 }
             } catch (err) {
                 console.error("Failed to fetch system state:", err);
             }
         }
+
+        // Approval button click handler
+        document.getElementById('approve-btn').addEventListener('click', async () => {
+            const btn = document.getElementById('approve-btn');
+            btn.textContent = "EXECUTING...";
+            btn.style.opacity = "0.5";
+            btn.style.pointerEvents = "none";
+            try {
+                await fetch('/api/approve_mitigation', { method: 'POST' });
+                // Hide button immediately to feel snappy
+                btn.style.display = 'none';
+            } catch (err) {
+                console.error("Failed to approve mitigation:", err);
+            } finally {
+                btn.textContent = "⚡ AUTHORIZE MITIGATION ⚡";
+                btn.style.opacity = "1";
+                btn.style.pointerEvents = "auto";
+            }
+        });
+
+        // Reset Demo button click handler
+        document.getElementById('reset-demo-btn').addEventListener('click', async () => {
+            if (confirm("Reset demo? This will wipe the agent log and revert to the primary vendor stream.")) {
+                try {
+                    await fetch('/api/reset_demo', { method: 'POST' });
+                    document.getElementById('terminal-log').innerHTML = '<div style="color: #666;">> System reset. Awaiting audit logs...</div>';
+                } catch (err) {
+                    console.error("Failed to reset demo:", err);
+                }
+            }
+        });
 
         // Run every 1000ms
         setInterval(fetchState, 1000);

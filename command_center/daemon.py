@@ -42,8 +42,8 @@ class TalosDaemon(threading.Thread):
             except Exception as e:
                 logger.error(f"Daemon crash in poll cycle: {e}")
             
-            # 3-second sleep interval between polls
-            self._stop_event.wait(3.0)
+            # 1.5-second sleep interval between polls for faster demo
+            self._stop_event.wait(1.5)
             
         DAEMON_STATE["is_running"] = False
         logger.info("Talos Background Daemon stopped.")
@@ -69,7 +69,8 @@ class TalosDaemon(threading.Thread):
                 except ValueError:
                     # Garbage unparseable text
                     http_error = True
-                    payload = {"raw_text": response.text[:200]}
+                    clean_text = response.text[:200].replace('\x00', '')
+                    payload = {"raw_text": clean_text}
             else:
                 http_error = True
         except requests.RequestException as e:
@@ -87,8 +88,34 @@ class TalosDaemon(threading.Thread):
         DAEMON_STATE["scout_reason"] = scout_result["reason"]
         DAEMON_STATE["consecutive_failures"] = scout_result["failures"]
         
-        # Also grab the latest 5 DB logs so the UI can show agent events
+        # Also grab the latest DB logs so the UI can show agent events
         DAEMON_STATE["agent_logs"] = db.get_recent_agent_logs(limit=5)
+        
+        # 5. Multi-Agent Pipeline Trigger
+        if scout_result["status"] == "ESCALATED":
+            # Check if we are already waiting for human approval
+            pending = db.get_pending_logs()
+            if not pending:
+                logger.info("[Daemon] Initiating Multi-Agent Remediation Pipeline...")
+                
+                # We need to import the agents here or at the top of the file
+                from agents import AnalystAgent, BrokerAgent, ForgeAgent
+                
+                # Phase 4.1: Analyst
+                analyst = AnalystAgent()
+                analyst_res = analyst.run(scout_result["payload"])
+                
+                # Phase 4.2: Broker
+                broker = BrokerAgent()
+                broker_res = broker.run(analyst_res)
+                
+                # Phase 4.3: Forge
+                forge = ForgeAgent()
+                forge.run(broker_res)
+                
+                logger.info("[Daemon] Pipeline complete. Awaiting human approval (Phase 5).")
+            else:
+                logger.info("[Daemon] Remediation is Pending. Resuming normal polling of broken stream.")
 
     def stop(self):
         self._stop_event.set()

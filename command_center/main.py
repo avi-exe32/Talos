@@ -53,7 +53,28 @@ def system_state():
         })
     
     state["agent_logs"] = formatted_logs
+    
+    # Check if the Forge agent specifically has finished and is pending approval
+    pending_logs = db.get_pending_logs()
+    state["has_pending"] = any(log.get("agent_name") == "Forge" for log in pending_logs)
+    
     return state
+
+@app.post("/api/approve_mitigation")
+def approve_mitigation():
+    try:
+        new_url = db.execute_pending_mitigation()
+        return {"status": "success", "new_url": new_url}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+@app.post("/api/reset_demo")
+def reset_demo():
+    try:
+        db.reset_demo()
+        return {"status": "success"}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
 
 if __name__ == "__main__":
     import uvicorn

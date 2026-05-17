@@ -343,6 +343,50 @@ def mark_logs_rejected() -> int:
     logger.info(f"[DB] Marked {count} log(s) as Rejected.")
     return count
 
+def execute_pending_mitigation() -> str:
+    """
+    Phase 5: Execute the mitigation plan.
+    Reads the Forge's Pending log, extracts new_target_url, applies it, and marks all logs as Executed.
+    """
+    with get_conn() as conn:
+        result = conn.execute(
+            text(
+                """
+                SELECT payload FROM agent_log 
+                WHERE agent_name = 'Forge' AND lifecycle_state = 'Pending' 
+                ORDER BY created_at DESC LIMIT 1
+                """
+            )
+        )
+        row = result.fetchone()
+        if not row:
+            raise ValueError("No pending Forge mitigation found.")
+            
+        payload = row[0]
+        if isinstance(payload, str):
+            import json
+            payload = json.loads(payload)
+            
+        new_url = payload.get("new_target_url")
+        if not new_url:
+            raise ValueError("Forge payload missing 'new_target_url'.")
+            
+    # Update the config and mark logs executed
+    update_active_vendor_url(new_url)
+    mark_logs_executed()
+    logger.info(f"[DB] Mitigation executed! Switched to: {new_url}")
+    return new_url
+def reset_demo():
+    """
+    Wipes agent logs and resets system back to primary URL for the next demo presentation.
+    """
+    with get_conn() as conn:
+        conn.execute(text("DELETE FROM agent_log"))
+        conn.execute(
+            text("UPDATE system_config SET current_active_vendor_url = 'https://talos-vsp-78550706553.asia-south1.run.app/stream_primary' WHERE id = 1")
+        )
+    logger.info("[DB] Demo Reset Complete. Logs wiped and URL reverted.")
+
 
 # ─── Health Check ─────────────────────────────────────────────────────────────
 
