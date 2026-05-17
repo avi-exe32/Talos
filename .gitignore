@@ -1,0 +1,66 @@
+# ═══════════════════════════════════════════════════════════════
+#  TALOS — .gitignore
+#  This file MUST be committed before any other file is staged.
+# ═══════════════════════════════════════════════════════════════
+
+# ── GCP Service Account Keys (CRITICAL — never commit) ──────────
+talos-496511-*.json
+*-service-account*.json
+*-key.json
+credentials.json
+service_account.json
+
+# ── Environment / Secrets ────────────────────────────────────────
+.env
+.env.local
+.env.production
+.env.staging
+# Allow the example templates
+!.env.example
+
+# ── Python ───────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+*.pyd
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+MANIFEST
+
+# ── Virtual Environments ─────────────────────────────────────────
+venv/
+.venv/
+env/
+ENV/
+.Python
+
+# ── IDE / Editor ─────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+*.sublime-project
+*.sublime-workspace
+
+# ── OS ───────────────────────────────────────────────────────────
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# ── Logs & Caches ────────────────────────────────────────────────
+*.log
+*.cache
+.cache/
+*.pid
+
+# ── Cloud Build / Docker ─────────────────────────────────────────
+.cloudbuild/
