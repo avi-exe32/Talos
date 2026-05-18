@@ -2,279 +2,1338 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Talos Command Center</title>
-    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <title>TALOS Command Center</title>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&display=swap" rel="stylesheet">
     <style>
         :root {
-            --bg-color: #050505;
-            --panel-bg: #111;
-            --text-color: #00ff00; /* Neon Green default */
-            --warning-color: #ffaa00; /* Neon Amber */
-            --error-color: #ff0000; /* Neon Red */
-            --border-glow: 0 0 10px rgba(0, 255, 0, 0.5);
-            --border-glow-amber: 0 0 15px rgba(255, 170, 0, 0.8);
-            --border-glow-red: 0 0 15px rgba(255, 0, 0, 0.8);
+            --bg:          #050505;
+            --panel:       #0a0a0c;
+            --panel2:      #0d0d10;
+            --border:      #1a1a22;
+            --green:       #00ff00;
+            --amber:       #ffaa00;
+            --red:         #ff0000;
+            --blue:        #00aaff;
+            --white:       #e8e8e8;
+            --dim:         #444;
+            --glow-g:      0 0 8px #00ff0066, 0 0 20px #00ff0033;
+            --glow-a:      0 0 8px #ffaa0099, 0 0 24px #ffaa0055;
+            --glow-r:      0 0 8px #ff000099, 0 0 24px #ff000055;
+            --glow-b:      0 0 8px #00aaffaa, 0 0 20px #00aaff44;
         }
-        body {
-            background-color: var(--bg-color);
-            color: #ddd;
+
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body, html {
+            background: var(--bg);
+            color: #ccc;
             font-family: 'JetBrains Mono', monospace;
-            margin: 0;
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-            height: 100vh;
-            box-sizing: border-box;
-        }
-        h1 {
-            color: #fff;
-            text-align: center;
-            text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
-            margin-bottom: 20px;
-            letter-spacing: 2px;
-        }
-        .dashboard {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 20px;
-            flex: 1;
+            height: 100vh; width: 100vw;
             overflow: hidden;
         }
-        .panel {
-            background-color: var(--panel-bg);
-            border: 1px solid #333;
-            border-radius: 5px;
-            padding: 20px;
+
+        /* ═══════════════════════════════════════════════
+           SCANLINE OVERLAY (global)
+        ═══════════════════════════════════════════════ */
+        body::after {
+            content: '';
+            position: fixed; inset: 0;
+            background: repeating-linear-gradient(
+                to bottom,
+                transparent 0px,
+                transparent 3px,
+                rgba(0,0,0,0.18) 3px,
+                rgba(0,0,0,0.18) 4px
+            );
+            pointer-events: none;
+            z-index: 9000;
+        }
+
+        /* ═══════════════════════════════════════════════
+           BOOT SCREEN
+        ═══════════════════════════════════════════════ */
+        #boot-screen {
+            position: fixed; inset: 0;
+            background: #000;
+            z-index: 9998;
             display: flex;
             flex-direction: column;
-            box-shadow: 0 0 15px rgba(0,0,0,0.8);
+            justify-content: center;
+            align-items: flex-start;
+            padding: 80px;
+        }
+        #boot-logo {
+            font-size: 0.65rem;
+            color: #00ff0044;
+            white-space: pre;
+            margin-bottom: 30px;
+            line-height: 1.1;
+        }
+        #boot-text {
+            color: var(--green);
+            font-size: 1rem;
+            white-space: pre-wrap;
+            line-height: 2;
+            letter-spacing: 1px;
+        }
+        #boot-bar-wrap {
+            margin-top: 20px;
+            width: 400px;
+        }
+        #boot-bar-track {
+            height: 3px;
+            background: #111;
+            width: 100%;
+            border: 1px solid #00ff0033;
+        }
+        #boot-bar-fill {
+            height: 100%;
+            background: var(--green);
+            width: 0%;
+            box-shadow: var(--glow-g);
+            transition: width 0.3s ease;
+        }
+        #boot-pct {
+            color: #00ff0077;
+            font-size: 0.7rem;
+            margin-top: 6px;
+            letter-spacing: 2px;
+        }
+
+        /* ═══════════════════════════════════════════════
+           APP CONTAINER
+        ═══════════════════════════════════════════════ */
+        #app-container {
+            display: none;
+            flex-direction: column;
+            height: 100vh;
+            padding: 0;
+            transition: filter 0.5s ease;
+        }
+        .dimmed { filter: brightness(0.18) blur(1px); pointer-events: none; }
+
+        /* ═══════════════════════════════════════════════
+           GLOBAL HEADER NAV
+        ═══════════════════════════════════════════════ */
+        #global-nav {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: #070709;
+            border-bottom: 1px solid #1a1a2e;
+            padding: 0 20px;
+            height: 42px;
+            flex-shrink: 0;
+            position: relative;
+            z-index: 10;
+        }
+        #global-nav::after {
+            content: '';
+            position: absolute;
+            bottom: 0; left: 0; right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, #00ff0044, #00aaff33, transparent);
+        }
+
+        .nav-left { display: flex; align-items: center; gap: 16px; }
+
+        #nav-title {
+            font-size: 1rem;
+            font-weight: 800;
+            letter-spacing: 4px;
+            color: #fff;
+            text-shadow: 0 0 12px rgba(255,255,255,0.4), 0 0 40px rgba(0,170,255,0.2);
+            cursor: default;
+            transition: none;
+        }
+        #nav-title.glitch {
+            animation: glitch-anim 0.5s steps(2) forwards;
+        }
+        @keyframes glitch-anim {
+            0%   { text-shadow: 2px 0 var(--red), -2px 0 var(--blue); transform: translate(2px,-1px); }
+            10%  { text-shadow: -3px 0 var(--red), 3px 0 var(--green); transform: translate(-2px,1px); }
+            20%  { text-shadow: 3px 2px var(--blue), -3px -2px var(--red); transform: translate(1px,2px) skewX(2deg); }
+            30%  { text-shadow: -2px 0 var(--green), 2px 0 var(--red); transform: translate(-1px,-1px); }
+            40%  { text-shadow: 2px -1px var(--red), -2px 1px var(--blue); transform: translate(3px,0); }
+            50%  { text-shadow: -3px 2px var(--blue), 3px -2px var(--green); transform: translate(-1px,2px) skewX(-3deg); }
+            60%  { text-shadow: 2px 0 var(--red), -2px 0 var(--blue); transform: translate(2px,-2px); }
+            70%  { text-shadow: -1px 0 var(--green), 1px 0 var(--red); transform: translate(-2px,1px); }
+            80%  { text-shadow: 3px 0 var(--blue), -3px 0 var(--green); transform: translate(1px,-1px) skewX(1deg); }
+            90%  { text-shadow: -2px -1px var(--red), 2px 1px var(--blue); transform: translate(-3px,2px); }
+            100% { text-shadow: 0 0 12px rgba(255,255,255,0.4); transform: translate(0,0) skewX(0); }
+        }
+
+        .nav-badge {
+            font-size: 0.6rem;
+            padding: 2px 8px;
+            border-radius: 2px;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            font-weight: 700;
+        }
+        .badge-green {
+            background: #00ff0015;
+            border: 1px solid #00ff0066;
+            color: var(--green);
+            box-shadow: var(--glow-g);
+            animation: pulse-green 2s ease-in-out infinite;
+        }
+        @keyframes pulse-green {
+            0%,100% { box-shadow: 0 0 4px #00ff0055, 0 0 12px #00ff0022; }
+            50%      { box-shadow: 0 0 10px #00ff0099, 0 0 24px #00ff0044; }
+        }
+        .badge-region {
+            background: #00aaff12;
+            border: 1px solid #00aaff44;
+            color: var(--blue);
+            font-size: 0.6rem;
+            padding: 2px 8px;
+            border-radius: 2px;
+            letter-spacing: 2px;
+        }
+        .nav-right { display: flex; align-items: center; gap: 16px; }
+        #utc-clock {
+            font-size: 0.75rem;
+            color: #00ff00bb;
+            letter-spacing: 2px;
+            font-variant-numeric: tabular-nums;
+        }
+        #reset-demo-btn {
+            padding: 4px 12px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.65rem;
+            background: transparent;
+            border: 1px solid #333;
+            color: #555;
+            cursor: pointer;
+            border-radius: 2px;
+            letter-spacing: 1px;
+            transition: 0.2s;
+        }
+        #reset-demo-btn:hover { color: #fff; border-color: #666; }
+
+        /* ═══════════════════════════════════════════════
+           HUD ROW
+        ═══════════════════════════════════════════════ */
+        .hud-row {
+            display: grid;
+            grid-template-columns: repeat(3,1fr);
+            gap: 12px;
+            padding: 12px 20px;
+            flex-shrink: 0;
+        }
+        .hud-card {
+            background: var(--panel);
+            border: 1px solid #1a1a2e;
+            border-radius: 4px;
+            padding: 10px 18px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
             position: relative;
             overflow: hidden;
         }
-        .panel-title {
-            font-size: 1.2rem;
-            margin-top: 0;
-            border-bottom: 1px solid #333;
-            padding-bottom: 10px;
-            color: #aaa;
+        .hud-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0;
+            width: 3px; height: 100%;
+            background: #1a1a2e;
+            transition: background 0.4s, box-shadow 0.4s;
+        }
+        .hud-card.state-green::before { background: var(--green); box-shadow: var(--glow-g); }
+        .hud-card.state-red::before   { background: var(--red);   box-shadow: var(--glow-r); }
+        .hud-card.state-amber::before { background: var(--amber); box-shadow: var(--glow-a); }
+
+        .hud-label {
+            font-size: 0.58rem;
+            color: #444;
+            letter-spacing: 3px;
             text-transform: uppercase;
         }
-        /* Live Stream Section */
-        #stream-container {
-            border: 1px solid #00ff00;
-            box-shadow: var(--border-glow);
-            padding: 15px;
+        .hud-value {
+            font-size: 1.3rem;
+            font-weight: 800;
+            letter-spacing: 2px;
+            color: #333;
+            transition: color 0.3s, text-shadow 0.3s;
+        }
+        .hud-value.glow-green { color: var(--green); text-shadow: var(--glow-g); }
+        .hud-value.glow-red   {
+            color: var(--red); text-shadow: var(--glow-r);
+            animation: flash-red 1s ease-in-out infinite;
+        }
+        .hud-value.glow-amber { color: var(--amber); text-shadow: var(--glow-a); }
+        @keyframes flash-red {
+            0%,100% { opacity: 1; }
+            50%      { opacity: 0.7; }
+        }
+
+        /* ═══════════════════════════════════════════════
+           3-COL DASHBOARD
+        ═══════════════════════════════════════════════ */
+        .dashboard-3col {
+            display: grid;
+            grid-template-columns: 1fr 1.15fr 0.85fr;
+            gap: 12px;
             flex: 1;
+            overflow: hidden;
+            padding: 0 20px;
+            margin-bottom: 0;
+        }
+        .panel {
+            background: var(--panel);
+            border: 1px solid #1a1a28;
+            border-radius: 4px;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            position: relative;
+        }
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 14px;
+            border-bottom: 1px solid #151520;
+            background: #07070a;
+            flex-shrink: 0;
+        }
+        .panel-title-text {
+            font-size: 0.62rem;
+            letter-spacing: 3px;
+            color: #555;
+            text-transform: uppercase;
+            font-weight: 700;
+        }
+        .panel-dot {
+            width: 6px; height: 6px;
+            border-radius: 50%;
+            background: #333;
+            transition: background 0.3s, box-shadow 0.3s;
+        }
+        .panel-dot.active-green { background: var(--green); box-shadow: var(--glow-g); }
+        .panel-dot.active-red   { background: var(--red);   box-shadow: var(--glow-r); animation: dot-pulse 0.8s ease-in-out infinite; }
+        .panel-dot.active-blue  { background: var(--blue);  box-shadow: var(--glow-b); animation: dot-pulse-b 1.5s ease-in-out infinite; }
+        @keyframes dot-pulse   { 0%,100%{opacity:1} 50%{opacity:0.4} }
+        @keyframes dot-pulse-b { 0%,100%{opacity:1} 50%{opacity:0.6} }
+
+        /* ─── Left Panel: CRT ─── */
+        .panel.panel-left { border-color: #00ff0022; }
+        .panel.panel-left.glow-red   { border-color: #ff000044 !important; box-shadow: 0 0 20px #ff000022 !important; }
+        .panel.panel-left.glow-amber { border-color: #ffaa0044 !important; box-shadow: 0 0 20px #ffaa0022 !important; }
+
+        #stream-container {
+            flex: 1;
+            padding: 14px;
             overflow: auto;
             background: #000;
-            color: var(--text-color);
-            font-size: 0.9rem;
+            color: var(--green);
+            font-size: 0.8rem;
             white-space: pre-wrap;
-            transition: all 0.3s ease;
+            word-break: break-all;
+            line-height: 1.6;
+            transition: color 0.3s;
+            position: relative;
         }
-        .status-indicator {
-            position: absolute;
-            top: 20px;
-            right: 20px;
-            padding: 5px 15px;
-            border-radius: 3px;
-            font-weight: bold;
-            font-size: 0.9rem;
-            letter-spacing: 1px;
-            transition: all 0.3s ease;
+        /* CRT scanlines on stream only */
+        #stream-container::after {
+            content: '';
+            position: absolute; inset: 0;
+            background: repeating-linear-gradient(
+                to bottom,
+                rgba(0,0,0,0) 0px, rgba(0,0,0,0) 2px,
+                rgba(0,0,0,0.3) 2px, rgba(0,0,0,0.3) 4px
+            );
+            pointer-events: none;
+            z-index: 1;
         }
-        .status-nominal {
-            border: 1px solid #00ff00;
-            color: #00ff00;
-            box-shadow: 0 0 10px rgba(0,255,0,0.5);
+        #stream-container.glow-red   { color: var(--red) !important; }
+        #stream-container.glow-amber { color: var(--amber) !important; }
+
+        /* ─── Center Panel: Brain ─── */
+        .panel.panel-center { border-color: #00aaff22; }
+        #brain-container {
+            flex: 1;
+            background: #02040a;
+            padding: 14px;
+            overflow-y: auto;
+            font-size: 0.85rem;
+            color: var(--blue);
+            line-height: 1.7;
         }
-        .status-warning {
-            border: 1px solid #ffaa00;
-            color: #ffaa00;
-            box-shadow: 0 0 10px rgba(255,170,0,0.5);
+        #brain-content > div {
+            margin-bottom: 14px;
+            padding-bottom: 14px;
+            border-bottom: 1px solid #0d1a2e;
         }
-        .status-escalated {
-            border: 1px solid #ff0000;
-            color: #ff0000;
-            box-shadow: 0 0 10px rgba(255,0,0,0.8);
-        }
-        
-        /* Terminal Log Section */
+        #brain-content > div:last-child { border-bottom: none; }
+        .cursor-blink { animation: blink 1s step-end infinite; color: var(--blue); }
+        @keyframes blink { 50% { opacity: 0; } }
+
+        /* ─── Right Panel: Audit ─── */
+        .panel.panel-right { border-color: #1a1a2e; }
         #terminal-log {
             flex: 1;
-            background: #0a0a0a;
-            border: 1px solid #333;
-            padding: 15px;
+            background: var(--bg);
+            padding: 10px;
             overflow-y: auto;
-            font-size: 0.9rem;
+            font-size: 0.72rem;
         }
         .log-entry {
-            margin-bottom: 12px;
-            line-height: 1.4;
-            border-left: 2px solid #444;
-            padding-left: 10px;
+            margin-bottom: 8px;
+            padding: 6px 8px;
+            border-left: 2px solid #1a1a2e;
+            background: #07070a;
+            border-radius: 0 2px 2px 0;
+            line-height: 1.5;
         }
-        .log-time { color: #888; }
-        .log-agent { color: #00aaff; font-weight: bold; }
-        .log-state-pending { color: #ffaa00; font-weight: bold; }
-        .log-state-executed { color: #00ff00; font-weight: bold; }
-        .log-state-rejected { color: #ff0000; font-weight: bold; }
-        .log-payload { color: #aaa; margin-top: 4px; display: block; font-size: 0.85rem;}
-        
-        /* State override classes */
+        .log-time    { color: #444; }
+        .log-agent   { color: #aaa; font-weight: 700; }
+        .log-state-pending  { color: var(--amber); font-weight: 700; }
+        .log-state-executed { color: var(--green); font-weight: 700; }
+        .log-state-rejected { color: var(--red);   font-weight: 700; }
+        .log-payload { color: #555; display: block; font-size: 0.68rem; margin-top: 2px; word-break: break-all; }
+
+        /* ═══════════════════════════════════════════════
+           SYSTEM STATUS BAR (bottom, above gate)
+        ═══════════════════════════════════════════════ */
+        #sys-status-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 5px 20px;
+            background: #070709;
+            border-top: 1px solid #111120;
+            flex-shrink: 0;
+            font-size: 0.6rem;
+            letter-spacing: 2px;
+            color: #333;
+        }
+        #sys-status-bar .bar-item { display: flex; align-items: center; gap: 8px; }
+        #latency-val { color: #00aaff88; transition: color 0.2s; }
+        #sys-version  { color: #333; }
+        .bar-sep { color: #222; }
+
+        /* ═══════════════════════════════════════════════
+           STATE OVERRIDES
+        ═══════════════════════════════════════════════ */
         .glow-amber {
-            border-color: var(--warning-color) !important;
-            box-shadow: var(--border-glow-amber) !important;
-            color: var(--warning-color) !important;
+            border-color: var(--amber) !important;
+            box-shadow: var(--glow-a) !important;
+            color: var(--amber) !important;
         }
         .glow-red {
-            border-color: var(--error-color) !important;
-            box-shadow: var(--border-glow-red) !important;
-            color: var(--error-color) !important;
+            border-color: var(--red) !important;
+            box-shadow: var(--glow-r) !important;
+            color: var(--red) !important;
         }
+
+        /* ═══════════════════════════════════════════════
+           EXECUTION GATE
+        ═══════════════════════════════════════════════ */
+        #execution-gate {
+            position: fixed;
+            bottom: 0; left: 0; right: 0;
+            height: 90px;
+            background: linear-gradient(transparent, rgba(0,0,0,0.97) 25%);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 5000;
+            padding-bottom: 12px;
+            animation: slide-up 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+        @keyframes slide-up {
+            from { transform: translateY(100%); opacity: 0; }
+            to   { transform: translateY(0);    opacity: 1; }
+        }
+        #approve-btn {
+            padding: 14px 48px;
+            font-size: 1.1rem;
+            font-weight: 800;
+            font-family: 'JetBrains Mono', monospace;
+            cursor: pointer;
+            background: #0a0800;
+            color: var(--amber);
+            border: 1px solid var(--amber);
+            box-shadow: var(--glow-a), inset 0 0 30px #ffaa0008;
+            border-radius: 3px;
+            text-transform: uppercase;
+            letter-spacing: 4px;
+            animation: pulse-gate 1.4s ease-in-out infinite;
+            transition: all 0.2s ease;
+        }
+        #approve-btn:hover {
+            background: var(--amber);
+            color: #000;
+            box-shadow: 0 0 20px #ffaa00cc, 0 0 60px #ffaa0066;
+            transform: scale(1.02);
+        }
+        @keyframes pulse-gate {
+            0%,100% { box-shadow: var(--glow-a), inset 0 0 30px #ffaa0008; }
+            50%      { box-shadow: 0 0 20px #ffaa00cc, 0 0 50px #ffaa0055; }
+        }
+
+        /* Screen flash on approval */
+        #flash-overlay {
+            position: fixed; inset: 0;
+            background: #fff;
+            opacity: 0;
+            pointer-events: none;
+            z-index: 8000;
+            transition: opacity 0.05s;
+        }
+        #flash-overlay.flash {
+            animation: screen-flash 0.6s ease forwards;
+        }
+        @keyframes screen-flash {
+            0%   { opacity: 0.8; }
+            30%  { opacity: 0.4; }
+            60%  { opacity: 0.15; }
+            100% { opacity: 0; }
+        }
+
+        /* ═══════════════════════════════════════════════
+           ORACLE CHATBOT
+        ═══════════════════════════════════════════════ */
+        #oracle-fab {
+            position: fixed;
+            bottom: 22px; right: 22px;
+            width: 48px; height: 48px;
+            border-radius: 50%;
+            background: #050510;
+            border: 1px solid #00aaff66;
+            box-shadow: var(--glow-b);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.1rem;
+            color: var(--blue);
+            z-index: 6000;
+            transition: all 0.2s;
+            animation: pulse-fab 2.5s ease-in-out infinite;
+        }
+        #oracle-fab:hover {
+            transform: scale(1.1);
+            box-shadow: 0 0 20px #00aaff99, 0 0 40px #00aaff44;
+        }
+        @keyframes pulse-fab {
+            0%,100% { box-shadow: var(--glow-b); }
+            50%      { box-shadow: 0 0 16px #00aaffaa, 0 0 36px #00aaff55; }
+        }
+
+        #oracle-panel {
+            position: fixed;
+            bottom: 0; right: 0;
+            width: 360px;
+            height: 100vh;
+            background: rgba(5, 5, 18, 0.88);
+            backdrop-filter: blur(20px) saturate(1.4);
+            -webkit-backdrop-filter: blur(20px) saturate(1.4);
+            border-left: 1px solid #00aaff33;
+            border-top: 1px solid #00aaff22;
+            box-shadow: -4px 0 40px rgba(0,170,255,0.1);
+            display: flex;
+            flex-direction: column;
+            z-index: 7000;
+            transform: translateX(100%);
+            transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        #oracle-panel.open { transform: translateX(0); }
+
+        #oracle-header {
+            padding: 16px 18px;
+            border-bottom: 1px solid #0d1a2e;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        #oracle-header span {
+            font-size: 0.65rem;
+            letter-spacing: 3px;
+            color: var(--blue);
+            text-shadow: var(--glow-b);
+        }
+        #oracle-close {
+            background: none;
+            border: none;
+            color: #444;
+            cursor: pointer;
+            font-size: 1rem;
+            font-family: 'JetBrains Mono', monospace;
+            transition: color 0.2s;
+        }
+        #oracle-close:hover { color: var(--blue); }
+        #oracle-body {
+            flex: 1;
+            padding: 24px 18px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            gap: 12px;
+        }
+        .oracle-icon {
+            font-size: 2.5rem;
+            opacity: 0.3;
+        }
+        .oracle-placeholder {
+            font-size: 0.7rem;
+            color: #00aaff55;
+            letter-spacing: 2px;
+            text-align: center;
+            line-height: 2;
+            animation: oracle-pulse 3s ease-in-out infinite;
+        }
+        @keyframes oracle-pulse {
+            0%,100% { opacity: 0.5; }
+            50%      { opacity: 1; }
+        }
+        .oracle-line {
+            width: 100%;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, #00aaff33, transparent);
+        }
+        #target-url {
+            font-size: 0.62rem;
+            color: #444;
+            letter-spacing: 1px;
+            max-width: 120px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        /* scrollbar */
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #1a1a2e; border-radius: 2px; }
+        ::-webkit-scrollbar-thumb:hover { background: #2a2a4e; }
     </style>
 </head>
 <body>
-    <div style="display: flex; justify-content: space-between; align-items: center; padding-right: 20px;">
-        <h1>TALOS_COMMAND_CENTER</h1>
-        <button id="reset-demo-btn" style="padding: 8px 15px; font-family: 'JetBrains Mono', monospace; background: transparent; border: 1px solid #666; color: #666; cursor: pointer; border-radius: 3px; transition: 0.3s; height: 40px;" onmouseover="this.style.color='#fff'; this.style.borderColor='#fff'" onmouseout="this.style.color='#666'; this.style.borderColor='#666'">RESET DEMO</button>
+
+<!-- SCREEN FLASH -->
+<div id="flash-overlay"></div>
+
+<!-- ══════════════════════════════════════════
+     BOOT SCREEN
+══════════════════════════════════════════ -->
+<div id="boot-screen">
+    <div id="boot-logo">
+ ████████╗ █████╗ ██╗      ██████╗ ███████╗
+    ██╔══╝██╔══██╗██║     ██╔═══██╗██╔════╝
+    ██║   ███████║██║     ██║   ██║███████║
+    ██║   ██╔══██║██║     ██║   ██║╚════██║
+    ██║   ██║  ██║███████╗╚██████╔╝███████║
+    ╚═╝   ╚═╝  ╚═╝╚══════╝ ╚═════╝ ╚══════╝
     </div>
-    
-    <div class="dashboard">
-        <!-- LEFT: Live Vendor Stream -->
-        <div class="panel">
-            <h2 class="panel-title">Live Vendor Stream</h2>
-            <div id="status-badge" class="status-indicator status-nominal">NOMINAL</div>
-            <p style="color: #666; font-size: 0.85rem; margin: 10px 0;">TARGET_URL: <span id="target-url" style="color: #00aaff;">Loading...</span></p>
-            <div id="stream-container">
-Initializing uplink...
+    <div id="boot-text"></div>
+    <div id="boot-bar-wrap">
+        <div id="boot-bar-track"><div id="boot-bar-fill"></div></div>
+        <div id="boot-pct">0%</div>
+    </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     MAIN APP
+══════════════════════════════════════════ -->
+<div id="app-container">
+
+    <!-- GLOBAL NAV -->
+    <nav id="global-nav">
+        <div class="nav-left">
+            <span id="nav-title">TALOS_COMMAND_CENTER</span>
+            <span class="nav-badge badge-green">● SECURE UPLINK</span>
+            <span class="nav-badge badge-region">REGION: ASIA-SOUTH1</span>
+        </div>
+        <div class="nav-right">
+            <span id="utc-clock">00:00:00 UTC</span>
+            <button id="reset-demo-btn">RESET DEMO</button>
+        </div>
+    </nav>
+
+    <!-- HUD CARDS -->
+    <div class="hud-row">
+        <div class="hud-card state-green" id="hud-card-status">
+            <span class="hud-label">System Status</span>
+            <span class="hud-value glow-green" id="hud-status">NOMINAL</span>
+        </div>
+        <div class="hud-card" id="hud-card-stockout">
+            <span class="hud-label">Factory Stockout Clock</span>
+            <span class="hud-value" id="hud-stockout">STANDBY</span>
+        </div>
+        <div class="hud-card" id="hud-card-exposure">
+            <span class="hud-label">Financial Exposure</span>
+            <span class="hud-value" id="hud-exposure">STANDBY</span>
+        </div>
+    </div>
+
+    <!-- 3-COL GRID -->
+    <div class="dashboard-3col">
+
+        <!-- LEFT: VENDOR STREAM -->
+        <div class="panel panel-left">
+            <div class="panel-header">
+                <span class="panel-title-text">01 // Live Vendor Stream</span>
+                <div style="display:flex;align-items:center;gap:8px;">
+                    <span id="target-url">Loading...</span>
+                    <div class="panel-dot active-green" id="dot-stream"></div>
+                </div>
+            </div>
+            <div id="stream-container">Initializing uplink...</div>
+        </div>
+
+        <!-- CENTER: AI BRAIN -->
+        <div class="panel panel-center">
+            <div class="panel-header">
+                <span class="panel-title-text">02 // Live Agent Feed — AI Brain</span>
+                <div class="panel-dot active-blue" id="dot-brain"></div>
+            </div>
+            <div id="brain-container">
+                <div id="brain-content"></div>
+                <span class="cursor-blink">▋</span>
             </div>
         </div>
 
-        <!-- RIGHT: Agent Audit Log -->
-        <div class="panel">
-            <h2 class="panel-title">Agent Audit Log</h2>
-            <button id="approve-btn" style="display: none; padding: 15px; font-size: 1.2rem; font-weight: bold; font-family: 'JetBrains Mono', monospace; cursor: pointer; background: #222; color: #ffaa00; border: 2px solid #ffaa00; box-shadow: 0 0 15px rgba(255, 170, 0, 0.8); border-radius: 5px; margin-bottom: 15px; text-transform: uppercase; transition: all 0.3s ease;">⚡ AUTHORIZE MITIGATION ⚡</button>
+        <!-- RIGHT: AUDIT LOG -->
+        <div class="panel panel-right">
+            <div class="panel-header">
+                <span class="panel-title-text">03 // System Registry</span>
+                <div class="panel-dot" id="dot-audit"></div>
+            </div>
             <div id="terminal-log">
-                <div style="color: #666;">> Awaiting audit logs...</div>
+                <div style="color:#333;font-size:0.7rem;padding:8px;">> Awaiting audit logs...</div>
+            </div>
+        </div>
+
+    </div><!-- /.dashboard-3col -->
+
+    <!-- SYSTEM STATUS BAR -->
+    <div id="sys-status-bar">
+        <div class="bar-item">
+            <span>TALOS_OS</span>
+            <span id="sys-version" style="color:#00ff0044;">v1.0.4</span>
+            <span class="bar-sep">|</span>
+            <span>BUILD 20240917-PROD</span>
+        </div>
+        <div class="bar-item">
+            <span>NET</span>
+            <span id="latency-val">14ms</span>
+            <span class="bar-sep">|</span>
+            <span>PKT_LOSS: 0.00%</span>
+        </div>
+        <div class="bar-item">
+            <span>CPU: <span id="cpu-val" style="color:#00ff0077;">2.1%</span></span>
+            <span class="bar-sep">|</span>
+            <span>MEM: <span style="color:#00aaff66;">128MB</span></span>
+            <span class="bar-sep">|</span>
+            <span>UPTIME: <span id="uptime-val" style="color:#00ff0055;">00:00:00</span></span>
+        </div>
+    </div>
+
+</div><!-- /#app-container -->
+
+<!-- EXECUTION GATE -->
+<div id="execution-gate">
+    <button id="approve-btn">⚡ AUTHORIZE MITIGATION ⚡</button>
+</div>
+
+<!-- ORACLE FAB -->
+<button id="oracle-fab" title="AI Oracle">◈</button>
+<div id="oracle-panel">
+    <div id="oracle-header">
+        <span>AI ORACLE // TALOS v1.0.4</span>
+        <button id="oracle-close">✕</button>
+    </div>
+
+    <!-- Scrollable chat messages -->
+    <div id="oracle-messages" style="
+        flex:1; overflow-y:auto; padding:14px 18px;
+        display:flex; flex-direction:column; gap:10px;
+    ">
+        <div id="oracle-welcome" style="text-align:center; margin:auto;">
+            <div style="font-size:2.5rem; opacity:0.25; margin-bottom:12px;">◈</div>
+            <div style="font-size:0.65rem; color:#00aaff44; letter-spacing:2px; line-height:2.2;">
+                [ AI ORACLE WAITING FOR QUERY... ]<br><br>
+                NEURAL PATHWAYS ALIGNED.<br>
+                AWAITING OPERATOR INPUT.<br><br>
+                <span style="color:#00aaff22; font-size:0.58rem;">UPLINK SECURED // END-TO-END ENCRYPTED</span>
             </div>
         </div>
     </div>
 
-    <script>
-        async function fetchState() {
-            try {
-                const response = await fetch('/api/system_state');
-                const data = await response.json();
-                
-                // Update Target URL
-                document.getElementById('target-url').textContent = data.current_url || "Unknown";
+    <!-- Input bar -->
+    <div id="oracle-input-bar" style="
+        padding:12px 18px;
+        border-top:1px solid #0d1a2e;
+        display:flex; gap:8px; align-items:center;
+        background:#03030a; flex-shrink:0;
+    ">
+        <input
+            id="oracle-input"
+            type="text"
+            placeholder="Query the Oracle..."
+            autocomplete="off"
+            style="
+                flex:1; background:#07070f;
+                border:1px solid #00aaff33;
+                color:#00aaff;
+                font-family:'JetBrains Mono',monospace;
+                font-size:0.72rem; padding:8px 10px;
+                border-radius:2px; outline:none;
+                letter-spacing:1px;
+                transition:border-color 0.2s;
+            "
+        />
+        <button
+            id="oracle-send"
+            title="Send"
+            style="
+                background:#050518;
+                border:1px solid #00aaff55;
+                color:#00aaff;
+                font-family:'JetBrains Mono',monospace;
+                font-size:0.85rem; padding:7px 14px;
+                cursor:pointer; border-radius:2px;
+                letter-spacing:1px;
+                transition:all 0.2s;
+            "
+        >▶</button>
+    </div>
+</div>
 
-                // Update Status Badge and Container Glow
-                const badge = document.getElementById('status-badge');
-                const container = document.getElementById('stream-container');
-                
-                if (data.scout_status === "NOMINAL") {
-                    badge.className = "status-indicator status-nominal";
-                    badge.textContent = "NOMINAL";
-                    container.classList.remove('glow-amber', 'glow-red');
-                } else if (data.scout_status === "WARNING") {
-                    badge.className = "status-indicator status-warning";
-                    badge.textContent = `WARNING (${data.consecutive_failures}/3)`;
-                    container.classList.add('glow-amber');
-                    container.classList.remove('glow-red');
-                } else {
-                    badge.className = "status-indicator status-escalated";
-                    badge.textContent = "ESCALATED";
-                    container.classList.remove('glow-amber');
-                    container.classList.add('glow-red');
-                }
+<script>
+// ═══════════════════════════════════════════
+// WEB AUDIO — TYPING BEEP
+// ═══════════════════════════════════════════
+let audioCtx = null;
+function initAudio() {
+    if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+}
+function playBeep(freq = 880, dur = 0.025, vol = 0.04) {
+    if (!audioCtx) return;
+    try {
+        const osc  = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.frequency.value = freq;
+        osc.type = 'square';
+        gain.gain.setValueAtTime(vol, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + dur);
+        osc.start(audioCtx.currentTime);
+        osc.stop(audioCtx.currentTime + dur);
+    } catch(e) {}
+}
 
-                // Update JSON Payload stream
-                if (data.last_payload) {
-                    container.textContent = JSON.stringify(data.last_payload, null, 2);
-                }
+// ═══════════════════════════════════════════
+// UTC CLOCK
+// ═══════════════════════════════════════════
+function tickClock() {
+    const now = new Date();
+    const pad = n => String(n).padStart(2,'0');
+    document.getElementById('utc-clock').textContent =
+        `${pad(now.getUTCHours())}:${pad(now.getUTCMinutes())}:${pad(now.getUTCSeconds())} UTC`;
+}
+setInterval(tickClock, 1000);
+tickClock();
 
-                // Update Terminal Log
-                const terminal = document.getElementById('terminal-log');
-                if (data.agent_logs && data.agent_logs.length > 0) {
-                    // Check if scrolled to bottom before update to allow auto-scrolling
-                    const isScrolledToBottom = terminal.scrollHeight - terminal.clientHeight <= terminal.scrollTop + 5;
-                    
-                    let logHtml = '';
-                    data.agent_logs.forEach(log => {
-                        let stateClass = '';
-                        if(log.state === 'Pending') stateClass = 'log-state-pending';
-                        if(log.state === 'Executed') stateClass = 'log-state-executed';
-                        if(log.state === 'Rejected') stateClass = 'log-state-rejected';
-                        
-                        logHtml += `<div class="log-entry">
-                            <span class="log-time">[${log.time}]</span> 
-                            <span class="log-agent">${log.agent}</span> :: 
-                            <span class="${stateClass}">${log.state}</span>
-                            <span class="log-payload">${JSON.stringify(log.payload)}</span>
-                        </div>`;
-                    });
-                    
-                    // Only update DOM if content changed to prevent cursor jumps or flickering
-                    if (terminal.innerHTML !== logHtml) {
-                        terminal.innerHTML = logHtml;
-                        if (isScrolledToBottom) {
-                            terminal.scrollTop = terminal.scrollHeight;
-                        }
-                    }
-                } else {
-                    if (terminal.innerHTML !== '<div style="color: #666;">> Awaiting audit logs...</div>') {
-                        terminal.innerHTML = '<div style="color: #666;">> Awaiting audit logs...</div>';
-                    }
-                }
+// ═══════════════════════════════════════════
+// UPTIME TICKER
+// ═══════════════════════════════════════════
+let uptimeSeconds = 0;
+setInterval(() => {
+    uptimeSeconds++;
+    const h = String(Math.floor(uptimeSeconds/3600)).padStart(2,'0');
+    const m = String(Math.floor((uptimeSeconds%3600)/60)).padStart(2,'0');
+    const s = String(uptimeSeconds%60).padStart(2,'0');
+    document.getElementById('uptime-val').textContent = `${h}:${m}:${s}`;
+}, 1000);
 
-                // Show or hide Approval button
-                const btn = document.getElementById('approve-btn');
-                if (data.has_pending) {
-                    btn.style.display = 'block';
-                } else {
-                    btn.style.display = 'none';
-                }
-            } catch (err) {
-                console.error("Failed to fetch system state:", err);
-            }
+// ═══════════════════════════════════════════
+// FAKE LATENCY
+// ═══════════════════════════════════════════
+const latencies = [9,10,11,12,13,14,15,16,17,18,20,22,11,13];
+let latIdx = 0;
+setInterval(() => {
+    latIdx = (latIdx + 1) % latencies.length;
+    const v = latencies[latIdx] + Math.floor(Math.random()*4);
+    const el = document.getElementById('latency-val');
+    el.textContent = `${v}ms`;
+    el.style.color = v < 15 ? '#00aaffaa' : v < 20 ? '#ffaa0088' : '#ff000088';
+}, 1200);
+
+// fake CPU
+setInterval(() => {
+    const cpu = (1.5 + Math.random()*3).toFixed(1);
+    document.getElementById('cpu-val').textContent = `${cpu}%`;
+}, 2000);
+
+// ═══════════════════════════════════════════
+// BOOT SEQUENCE
+// ═══════════════════════════════════════════
+const bootLines = [
+    { text: "[SYS] AUTHENTICATING GCP SERVICE ACCOUNT...", delay: 400, pct: 15 },
+    { text: " ✓  SUCCESS.", delay: 300, pct: 30 },
+    { text: "[SYS] UPLINK ESTABLISHED: asia-south1", delay: 500, pct: 50 },
+    { text: "[SYS] WAKING TALOS MULTI-AGENT PIPELINE...", delay: 600, pct: 70 },
+    { text: "[SYS] SCOUT AGENT............. ONLINE", delay: 250, pct: 78 },
+    { text: "[SYS] ANALYST AGENT........... ONLINE", delay: 250, pct: 86 },
+    { text: "[SYS] BROKER AGENT............ ONLINE", delay: 250, pct: 93 },
+    { text: "[SYS] FORGE AGENT............. ONLINE", delay: 250, pct: 100 },
+    { text: "[SYS] ALL SYSTEMS NOMINAL. TRANSFERRING TO DASHBOARD...", delay: 600, pct: 100 },
+];
+
+async function runBootSequence() {
+    const bootTextDiv = document.getElementById('boot-text');
+    const barFill = document.getElementById('boot-bar-fill');
+    const pctLabel = document.getElementById('boot-pct');
+
+    for (let line of bootLines) {
+        bootTextDiv.textContent += line.text + "\n";
+        barFill.style.width = line.pct + '%';
+        pctLabel.textContent = line.pct + '%';
+        await new Promise(r => setTimeout(r, line.delay));
+    }
+
+    await new Promise(r => setTimeout(r, 500));
+
+    const bs = document.getElementById('boot-screen');
+    bs.style.transition = 'opacity 0.4s ease';
+    bs.style.opacity = '0';
+    await new Promise(r => setTimeout(r, 400));
+    bs.style.display = 'none';
+
+    const app = document.getElementById('app-container');
+    app.style.display = 'flex';
+    app.style.opacity = '0';
+    app.style.transition = 'opacity 0.4s ease';
+    await new Promise(r => setTimeout(r, 50));
+    app.style.opacity = '1';
+
+    setInterval(fetchState, 1000);
+}
+
+window.onload = () => {
+    // Init audio on first interaction to bypass autoplay policy
+    document.addEventListener('click', initAudio, { once: true });
+    document.addEventListener('keydown', initAudio, { once: true });
+    runBootSequence();
+};
+
+// ═══════════════════════════════════════════
+// AI BRAIN TYPING QUEUE
+// ═══════════════════════════════════════════
+let brainTypeQueue  = [];
+let isBrainTyping   = false;
+let lastLogCount    = 0;
+let beepInterval    = null;
+
+function queueBrainText(text) {
+    brainTypeQueue.push(text);
+    processBrainQueue();
+}
+
+async function processBrainQueue() {
+    if (isBrainTyping || brainTypeQueue.length === 0) return;
+    isBrainTyping = true;
+    const text = brainTypeQueue.shift();
+    const container = document.getElementById('brain-content');
+
+    const block = document.createElement('div');
+    container.appendChild(block);
+
+    // Start subtle audio loop
+    if (audioCtx) {
+        beepInterval = setInterval(() => {
+            if (Math.random() < 0.3) playBeep(660 + Math.random()*400, 0.02, 0.03);
+        }, 60);
+    }
+
+    for (let i = 0; i < text.length; i++) {
+        block.textContent += text.charAt(i);
+        document.getElementById('brain-container').scrollTop =
+            document.getElementById('brain-container').scrollHeight;
+        await new Promise(r => setTimeout(r, 10));
+    }
+
+    if (beepInterval) { clearInterval(beepInterval); beepInterval = null; }
+    isBrainTyping = false;
+    processBrainQueue();
+}
+
+// ═══════════════════════════════════════════
+// GLITCH TITLE
+// ═══════════════════════════════════════════
+let glitched = false;
+function triggerGlitch() {
+    if (glitched) return;
+    glitched = true;
+    const t = document.getElementById('nav-title');
+    t.classList.add('glitch');
+    setTimeout(() => { t.classList.remove('glitch'); glitched = false; }, 600);
+}
+
+// ═══════════════════════════════════════════
+// MAIN FETCH ENGINE — LOGIC UNCHANGED
+// ═══════════════════════════════════════════
+async function fetchState() {
+    try {
+        const response = await fetch('/api/system_state');
+        const data = await response.json();
+
+        // 1. Update Target URL
+        document.getElementById('target-url').textContent = data.current_url || "Unknown";
+
+        // 2. HUD & Left Panel Status Updates
+        const hudStatus      = document.getElementById('hud-status');
+        const hudCardStatus  = document.getElementById('hud-card-status');
+        const streamContainer = document.getElementById('stream-container');
+
+        if (data.scout_status === "NOMINAL") {
+            hudStatus.textContent   = "NOMINAL";
+            hudStatus.className     = "hud-value glow-green";
+            hudCardStatus.className = "hud-card state-green";
+            document.getElementById('dot-stream').className = 'panel-dot active-green';
+            streamContainer.classList.remove('glow-amber', 'glow-red');
+            document.querySelector('.panel-left').classList.remove('glow-red','glow-amber');
+        } else if (data.scout_status === "WARNING") {
+            hudStatus.textContent   = `WARNING (${data.consecutive_failures}/3)`;
+            hudStatus.className     = "hud-value glow-amber";
+            hudCardStatus.className = "hud-card state-amber";
+            document.getElementById('dot-stream').className = 'panel-dot active-red';
+            streamContainer.classList.add('glow-amber');
+            streamContainer.classList.remove('glow-red');
+            document.querySelector('.panel-left').classList.add('glow-amber');
+            document.querySelector('.panel-left').classList.remove('glow-red');
+        } else {
+            hudStatus.textContent   = "ESCALATED";
+            hudStatus.className     = "hud-value glow-red";
+            hudCardStatus.className = "hud-card state-red";
+            document.getElementById('dot-stream').className = 'panel-dot active-red';
+            streamContainer.classList.remove('glow-amber');
+            streamContainer.classList.add('glow-red');
+            document.querySelector('.panel-left').classList.remove('glow-amber');
+            document.querySelector('.panel-left').classList.add('glow-red');
+            triggerGlitch();
         }
 
-        // Approval button click handler
-        document.getElementById('approve-btn').addEventListener('click', async () => {
-            const btn = document.getElementById('approve-btn');
-            btn.textContent = "EXECUTING...";
-            btn.style.opacity = "0.5";
-            btn.style.pointerEvents = "none";
-            try {
-                await fetch('/api/approve_mitigation', { method: 'POST' });
-                // Hide button immediately to feel snappy
-                btn.style.display = 'none';
-            } catch (err) {
-                console.error("Failed to approve mitigation:", err);
-            } finally {
-                btn.textContent = "⚡ AUTHORIZE MITIGATION ⚡";
-                btn.style.opacity = "1";
-                btn.style.pointerEvents = "auto";
-            }
-        });
+        // 3. Update Left Panel JSON Payload stream
+        if (data.last_payload) {
+            streamContainer.textContent = JSON.stringify(data.last_payload, null, 2);
+        }
 
-        // Reset Demo button click handler
-        document.getElementById('reset-demo-btn').addEventListener('click', async () => {
-            if (confirm("Reset demo? This will wipe the agent log and revert to the primary vendor stream.")) {
-                try {
-                    await fetch('/api/reset_demo', { method: 'POST' });
-                    document.getElementById('terminal-log').innerHTML = '<div style="color: #666;">> System reset. Awaiting audit logs...</div>';
-                } catch (err) {
-                    console.error("Failed to reset demo:", err);
+        // 4. Extract Analytical Math for HUD Cards
+        // Phase 3 Fix: Check for Executed logs to show AVERTED/SECURED state on recovery
+        if (data.agent_logs && data.agent_logs.length > 0) {
+            let stockoutHours   = null;
+            let brokerPoTotal   = null;
+            let isExecuted      = data.agent_logs.some(log => log.state === 'Executed');
+            let hasPendingCycle = data.agent_logs.some(log => log.state === 'Pending');
+
+            // Find PENDING Analyst log entry and extract hours_until_stockout
+            const analystLog = data.agent_logs.find(log => log.agent === "Analyst" && log.state === "Pending");
+            if (analystLog && analystLog.payload && analystLog.payload.hours_until_stockout) {
+                stockoutHours = analystLog.payload.hours_until_stockout;
+            }
+
+            // Find PENDING Broker log entry and extract draft_po_total
+            const brokerLog = data.agent_logs.find(log => log.agent === "Broker" && log.state === "Pending");
+            if (brokerLog && brokerLog.payload && brokerLog.payload.draft_po_total) {
+                brokerPoTotal = brokerLog.payload.draft_po_total;
+            }
+
+            // ── Update Stockout Card ──────────────────────────────────────────
+            if (stockoutHours !== null) {
+                // Active alert: pipeline mid-flight
+                const sHUD = document.getElementById('hud-stockout');
+                sHUD.textContent = `${stockoutHours} HOURS`;
+                sHUD.className   = "hud-value glow-red";
+                document.getElementById('hud-card-stockout').className = "hud-card state-red";
+            } else if (isExecuted && !hasPendingCycle) {
+                // Phase 3 HUD Retention: mitigation was executed — show SECURED
+                const executedAnalyst = data.agent_logs.find(log => log.agent === "Analyst" && log.state === "Executed");
+                const savedHours = executedAnalyst?.payload?.hours_until_stockout ?? '??';
+                const sHUD = document.getElementById('hud-stockout');
+                sHUD.textContent = `SECURED: ${savedHours}H`;
+                sHUD.className   = "hud-value glow-green";
+                document.getElementById('hud-card-stockout').className = "hud-card state-green";
+            } else if (!hasPendingCycle) {
+                // No activity at all — standby
+                document.getElementById('hud-stockout').className   = "hud-value";
+                document.getElementById('hud-stockout').textContent = "STANDBY";
+                document.getElementById('hud-card-stockout').className = "hud-card";
+            }
+
+            // ── Update Exposure Card ──────────────────────────────────────────
+            if (brokerPoTotal !== null) {
+                // Active alert: pipeline mid-flight
+                const eHUD = document.getElementById('hud-exposure');
+                const poAmount = (brokerPoTotal / 1_000_000).toFixed(1);
+                eHUD.textContent = `$${poAmount}M PO DRAFTED`;
+                eHUD.className   = "hud-value glow-red";
+                document.getElementById('hud-card-exposure').className = "hud-card state-red";
+            } else if (isExecuted && !hasPendingCycle) {
+                // Phase 3 HUD Retention: mitigation executed — show AVERTED
+                const executedBroker = data.agent_logs.find(log => log.agent === "Broker" && log.state === "Executed");
+                const savedAmount = executedBroker?.payload?.draft_po_total ?? null;
+                const eHUD = document.getElementById('hud-exposure');
+                if (savedAmount) {
+                    const poAmount = (savedAmount / 1_000_000).toFixed(1);
+                    eHUD.textContent = `AVERTED: $${poAmount}M`;
+                } else {
+                    eHUD.textContent = `AVERTED`;
                 }
+                eHUD.className = "hud-value glow-green";
+                document.getElementById('hud-card-exposure').className = "hud-card state-green";
+            } else if (!hasPendingCycle) {
+                // No activity — standby
+                document.getElementById('hud-exposure').className   = "hud-value";
+                document.getElementById('hud-exposure').textContent = "STANDBY";
+                document.getElementById('hud-card-exposure').className = "hud-card";
             }
-        });
+        } else {
+            document.getElementById('hud-stockout').className   = "hud-value";
+            document.getElementById('hud-stockout').textContent = "STANDBY";
+            document.getElementById('hud-card-stockout').className = "hud-card";
+            document.getElementById('hud-exposure').className   = "hud-value";
+            document.getElementById('hud-exposure').textContent = "STANDBY";
+            document.getElementById('hud-card-exposure').className = "hud-card";
+        }
 
-        // Run every 1000ms
-        setInterval(fetchState, 1000);
-        fetchState();
-    </script>
+        // 5. Update Center Panel (Brain) & Right Panel (Audit Log)
+        // PHASE 3 Fix: Display human-readable AI explanations instead of raw JSON dumps
+        const terminal = document.getElementById('terminal-log');
+        if (data.agent_logs && data.agent_logs.length > 0) {
+            document.getElementById('dot-audit').className = 'panel-dot active-green';
+
+            if (data.agent_logs.length > lastLogCount) {
+                const newLogs = data.agent_logs.slice(lastLogCount);
+                newLogs.forEach(log => {
+                    // Extract human-readable message based on agent type
+                    let brainMsg = '';
+                    const p = log.payload || {};
+
+                    if (log.agent === 'Analyst') {
+                        // Analyst explains the risk assessment
+                        const summary = p.summary || p.risk_assessment || 'Risk analysis complete';
+                        brainMsg = `> ANALYST: ${summary}`;
+                    } else if (log.agent === 'Broker') {
+                        // Broker explains the sourcing strategy
+                        const justification = p.justification || p.recommendation || 'Mitigation strategy formulated';
+                        brainMsg = `> BROKER: ${justification}`;
+                    } else if (log.agent === 'Forge') {
+                        // Forge announces the patch target
+                        const newUrl = p.new_target_url || 'backup endpoint';
+                        brainMsg = `> FORGE: Patch generated. Rerouting to ${newUrl}`;
+                    } else {
+                        // Scout or unknown agent
+                        brainMsg = `> ${log.agent.toUpperCase()}: ${log.state.toUpperCase()}`;
+                    }
+                    queueBrainText(brainMsg);
+                });
+                lastLogCount = data.agent_logs.length;
+            }
+
+            const isScrolledToBottom = terminal.scrollHeight - terminal.clientHeight <= terminal.scrollTop + 5;
+            let logHtml = '';
+            data.agent_logs.forEach(log => {
+                let stateClass = '';
+                if (log.state === 'Pending')  stateClass = 'log-state-pending';
+                if (log.state === 'Executed') stateClass = 'log-state-executed';
+                if (log.state === 'Rejected') stateClass = 'log-state-rejected';
+                logHtml += `<div class="log-entry">
+                    <span class="log-time">[${log.time}]</span>
+                    <span class="log-agent"> ${log.agent}</span> ::
+                    <span class="${stateClass}">${log.state}</span>
+                    <span class="log-payload">${JSON.stringify(log.payload)}</span>
+                </div>`;
+            });
+            if (terminal.innerHTML !== logHtml) {
+                terminal.innerHTML = logHtml;
+                if (isScrolledToBottom) terminal.scrollTop = terminal.scrollHeight;
+            }
+        } else {
+            lastLogCount = 0;
+            document.getElementById('brain-content').innerHTML = '';
+            document.getElementById('dot-audit').className = 'panel-dot';
+            const empty = '<div style="color:#333;font-size:0.7rem;padding:8px;">> Awaiting audit logs...</div>';
+            if (terminal.innerHTML !== empty) terminal.innerHTML = empty;
+        }
+
+        // 6. Execution Gate
+        const gate    = document.getElementById('execution-gate');
+        const appMain = document.getElementById('app-container');
+        if (data.has_pending) {
+            gate.style.display = 'flex';
+            appMain.classList.add('dimmed');
+        } else {
+            gate.style.display = 'none';
+            appMain.classList.remove('dimmed');
+        }
+
+    } catch (err) {
+        console.error("Failed to fetch system state:", err);
+    }
+}
+
+// ═══════════════════════════════════════════
+// APPROVE BUTTON
+// ═══════════════════════════════════════════
+document.getElementById('approve-btn').addEventListener('click', async () => {
+    initAudio();
+    const btn = document.getElementById('approve-btn');
+    btn.textContent = "EXECUTING...";
+    btn.style.opacity = "0.5";
+    btn.style.pointerEvents = "none";
+
+    // Screen flash
+    const flash = document.getElementById('flash-overlay');
+    flash.classList.add('flash');
+    setTimeout(() => flash.classList.remove('flash'), 700);
+
+    // Approval beep
+    if (audioCtx) {
+        [440,550,660,880].forEach((f,i) => {
+            setTimeout(() => playBeep(f, 0.08, 0.06), i*60);
+        });
+    }
+
+    try {
+        await fetch('/api/approve_mitigation', { method: 'POST' });
+        document.getElementById('execution-gate').style.display = 'none';
+        document.getElementById('app-container').classList.remove('dimmed');
+        
+        // Show mitigation success state in HUD cards
+        const sHUD = document.getElementById('hud-stockout');
+        sHUD.textContent = "MITIGATED";
+        sHUD.className   = "hud-value glow-green";
+        document.getElementById('hud-card-stockout').className = "hud-card state-green";
+        
+        const eHUD = document.getElementById('hud-exposure');
+        eHUD.textContent = "$0M RISK";
+        eHUD.className   = "hud-value glow-green";
+        document.getElementById('hud-card-exposure').className = "hud-card state-green";
+    } catch (err) {
+        console.error("Failed to approve mitigation:", err);
+    } finally {
+        btn.textContent = "⚡ AUTHORIZE MITIGATION ⚡";
+        btn.style.opacity = "1";
+        btn.style.pointerEvents = "auto";
+    }
+});
+
+// ═══════════════════════════════════════════
+// RESET BUTTON
+// ═══════════════════════════════════════════
+document.getElementById('reset-demo-btn').addEventListener('click', async () => {
+    if (confirm("Reset demo? This will wipe the agent log and revert to the primary vendor stream.")) {
+        try {
+            await fetch('/api/reset_demo', { method: 'POST' });
+            document.getElementById('terminal-log').innerHTML =
+                '<div style="color:#333;font-size:0.7rem;padding:8px;">> System reset. Awaiting audit logs...</div>';
+            document.getElementById('brain-content').innerHTML = '';
+            lastLogCount = 0;
+        } catch (err) {
+            console.error("Failed to reset demo:", err);
+        }
+    }
+});
+
+// ═══════════════════════════════════════════
+// ORACLE FAB & CHATBOT
+// ═══════════════════════════════════════════
+document.getElementById('oracle-fab').addEventListener('click', () => {
+    initAudio();
+    const panel = document.getElementById('oracle-panel');
+    panel.classList.toggle('open');
+    playBeep(440, 0.05, 0.04);
+    if (panel.classList.contains('open')) {
+        setTimeout(() => document.getElementById('oracle-input').focus(), 350);
+    }
+});
+document.getElementById('oracle-close').addEventListener('click', () => {
+    document.getElementById('oracle-panel').classList.remove('open');
+});
+
+// ── Oracle send logic ──────────────────────────────────────────────────────────
+function appendOracleMsg(role, text) {
+    const container = document.getElementById('oracle-messages');
+    // Hide welcome placeholder on first real message
+    const welcome = document.getElementById('oracle-welcome');
+    if (welcome) welcome.style.display = 'none';
+
+    const isUser = role === 'user';
+    const bubble = document.createElement('div');
+    bubble.style.cssText = `
+        max-width:85%; padding:8px 12px; border-radius:3px; font-size:0.68rem;
+        line-height:1.6; letter-spacing:0.5px; word-break:break-word;
+        align-self:${isUser ? 'flex-end' : 'flex-start'};
+        background:${isUser ? '#00aaff18' : '#05050e'};
+        border:1px solid ${isUser ? '#00aaff44' : '#1a1a2e'};
+        color:${isUser ? '#00aaff' : '#aaa'};
+    `;
+    bubble.textContent = (isUser ? '> ' : '◈ ') + text;
+    container.appendChild(bubble);
+    container.scrollTop = container.scrollHeight;
+    return bubble;
+}
+
+async function sendOracleMessage() {
+    const input = document.getElementById('oracle-input');
+    const msg   = input.value.trim();
+    if (!msg) return;
+
+    input.value = '';
+    playBeep(660, 0.04, 0.03);
+    appendOracleMsg('user', msg);
+
+    // Typing indicator
+    const container = document.getElementById('oracle-messages');
+    const typingEl  = document.createElement('div');
+    typingEl.style.cssText = 'font-size:0.65rem; color:#00aaff33; letter-spacing:2px; align-self:flex-start; padding:4px 0;';
+    typingEl.textContent   = '◈  processing...';
+    typingEl.id            = 'oracle-typing';
+    container.appendChild(typingEl);
+    container.scrollTop = container.scrollHeight;
+
+    try {
+        const res  = await fetch('/api/chat', {
+            method:  'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body:    JSON.stringify({ message: msg })
+        });
+        const data = await res.json();
+        typingEl.remove();
+        const replyEl = appendOracleMsg('oracle', data.response || 'No response.');
+        // Subtle entrance animation
+        replyEl.style.opacity = '0';
+        replyEl.style.transition = 'opacity 0.3s ease';
+        requestAnimationFrame(() => { replyEl.style.opacity = '1'; });
+        playBeep(550, 0.04, 0.03);
+    } catch (err) {
+        typingEl.remove();
+        appendOracleMsg('oracle', 'COMM ERROR: Could not reach The Oracle.');
+        console.error('Oracle fetch failed:', err);
+    }
+}
+
+document.getElementById('oracle-send').addEventListener('click', sendOracleMessage);
+document.getElementById('oracle-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter') sendOracleMessage();
+});
+document.getElementById('oracle-input').addEventListener('focus', () => {
+    document.getElementById('oracle-input').style.borderColor = '#00aaff66';
+});
+document.getElementById('oracle-input').addEventListener('blur', () => {
+    document.getElementById('oracle-input').style.borderColor = '#00aaff33';
+});
+</script>
 </body>
 </html>

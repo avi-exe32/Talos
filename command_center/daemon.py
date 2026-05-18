@@ -31,19 +31,26 @@ class TalosDaemon(threading.Thread):
         super().__init__(daemon=True) # Ensures thread dies when main program exits
         self.scout = ScoutAgent()
         self._stop_event = threading.Event()
+        self._first_loop = True  # Phase 1 Fix: flag to trigger immediate boot poll
 
     def run(self):
         logger.info("Talos Background Daemon started.")
         DAEMON_STATE["is_running"] = True
-        
+
         while not self._stop_event.is_set():
             try:
                 self._poll_cycle()
             except Exception as e:
                 logger.error(f"Daemon crash in poll cycle: {e}")
-            
-            # 1.5-second sleep interval between polls for faster demo
-            self._stop_event.wait(1.5)
+
+            # Phase 1 Fix: skip sleep on first iteration so UI gets clean vendor data immediately.
+            # Database was reset in main.py lifespan, so first poll fetches pristine state.
+            if self._first_loop:
+                self._first_loop = False
+                logger.info("[Daemon] First poll complete. Clean vendor payload ready for UI.")
+            else:
+                # 1.5-second sleep interval between polls for faster demo
+                self._stop_event.wait(1.5)
             
         DAEMON_STATE["is_running"] = False
         logger.info("Talos Background Daemon stopped.")
