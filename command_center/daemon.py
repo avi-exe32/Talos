@@ -39,6 +39,10 @@ class TalosDaemon(threading.Thread):
     def run(self):
         logger.info("Talos Background Daemon started.")
         DAEMON_STATE["is_running"] = True
+        DAEMON_STATE["mitigation_approved"] = False  # Ensure clean state on daemon start
+        self._pipeline_triggered = False  # Ensure clean state on daemon start
+        self._cooldown_until = 0.0  # Ensure clean state on daemon start
+        logger.info("[Daemon] State flags reset to clean values.")
 
         while not self._stop_event.is_set():
             try:
