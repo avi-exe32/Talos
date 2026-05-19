@@ -70,24 +70,45 @@ def system_state():
     # PHASE 2 Fix: The AUTHORIZE button ONLY appears when the Forge Agent is Pending.
     # This ensures the human-in-the-loop gate waits for the FULL pipeline to complete,
     # not just the Analyst or Broker. Ignore Pending logs from other agents.
-    pending_logs = db.get_pending_logs()
-    forge_pending = any(log["agent_name"] == "Forge" for log in pending_logs)
-    state["has_pending"] = forge_pending
+    # If mitigation was already approved, never show the button again until reset.
+    if daemon.DAEMON_STATE["mitigation_approved"]:
+        state["has_pending"] = False
+    else:
+        pending_logs = db.get_pending_logs()
+        forge_pending = any(log["agent_name"] == "Forge" for log in pending_logs)
+        state["has_pending"] = forge_pending
 
     return state
 
 @app.post("/api/approve_mitigation")
 def approve_mitigation():
     try:
+        # Set flag FIRST to prevent button from reappearing on next poll
+        daemon.DAEMON_STATE["mitigation_approved"] = True
+        logger.info("[Approval] Mitigation approved flag set. Button will not reappear until demo reset.")
+        
+        # Set 10-second cooldown to prevent re-triggering during URL switch
+        import time
+        daemon._daemon_instance._cooldown_until = time.time() + 10
+        logger.info("[Approval] 10-second pipeline cooldown activated to allow URL switch to stabilize.")
+        
+        # Now execute the mitigation
         new_url = db.execute_pending_mitigation()
+        
         return {"status": "success", "new_url": new_url}
     except Exception as e:
+        # If execution fails, reset the flag
+        daemon.DAEMON_STATE["mitigation_approved"] = False
         return {"status": "error", "message": str(e)}
 
 @app.post("/api/reset_demo")
 def reset_demo():
     try:
         db.reset_demo()
+        daemon._daemon_instance._pipeline_triggered = False
+        daemon._daemon_instance.scout.consecutive_failures = 0
+        daemon.DAEMON_STATE["mitigation_approved"] = False  # Reset approval flag
+        logger.info("[Reset] Mitigation approval flag reset. Button can appear again.")
         
         # Also ensure the vendor portal is reset back to a clean state
         import requests

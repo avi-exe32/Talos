@@ -23,7 +23,8 @@ DAEMON_STATE: Dict[str, Any] = {
     "scout_status": "NOMINAL",
     "scout_reason": "",
     "consecutive_failures": 0,
-    "agent_logs": []
+    "agent_logs": [],
+    "mitigation_approved": False  # Flag to prevent button from reappearing after approval
 }
 
 class TalosDaemon(threading.Thread):
@@ -31,7 +32,9 @@ class TalosDaemon(threading.Thread):
         super().__init__(daemon=True) # Ensures thread dies when main program exits
         self.scout = ScoutAgent()
         self._stop_event = threading.Event()
-        self._first_loop = True  # Phase 1 Fix: flag to trigger immediate boot poll
+        self._first_loop = True
+        self._pipeline_triggered = False # Phase 1 Fix: flag to trigger immediate boot poll
+        self._cooldown_until = 0.0  # Timestamp until which pipeline is blocked
 
     def run(self):
         logger.info("Talos Background Daemon started.")
@@ -100,9 +103,21 @@ class TalosDaemon(threading.Thread):
         
         # 5. Multi-Agent Pipeline Trigger
         if scout_result["status"] == "ESCALATED":
+            # Check if mitigation was already approved - never trigger pipeline again
+            if DAEMON_STATE["mitigation_approved"]:
+                logger.info("[Daemon] Mitigation already approved. Ignoring escalation.")
+                return
+            
+            # Check if we are in cooldown period (prevents re-trigger after authorization)
+            current_time = time.time()
+            if current_time < self._cooldown_until:
+                logger.info(f"[Daemon] Pipeline cooldown active. Ignoring escalation for {int(self._cooldown_until - current_time)} more seconds.")
+                return
+            
             # Check if we are already waiting for human approval
             pending = db.get_pending_logs()
-            if not pending:
+            if not self._pipeline_triggered and not pending:
+                self._pipeline_triggered = True
                 logger.info("[Daemon] Initiating Multi-Agent Remediation Pipeline...")
                 
                 # We need to import the agents here or at the top of the file
@@ -125,12 +140,11 @@ class TalosDaemon(threading.Thread):
                 logger.info("[Daemon] Remediation is Pending. Resuming normal polling of broken stream.")
                 
         elif scout_result["status"] == "NOMINAL":
-            # If the stream recovered on its own, auto-cancel any pending mitigations!
             pending = db.get_pending_logs()
             if pending:
-                logger.info("[Daemon] Stream recovered organically. Canceling pending mitigations.")
-                with db.get_conn() as conn:
-                    conn.execute(db.text("DELETE FROM agent_log WHERE lifecycle_state = 'Pending'"))
+                logger.info("[Daemon] Stream recovered but mitigation is pending human approval. Holding.")
+            else:
+                self._pipeline_triggered = False  # only reset when nothing is pending
 
     def stop(self):
         self._stop_event.set()

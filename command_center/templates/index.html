@@ -391,6 +391,7 @@
         }
         .log-time    { color: #444; }
         .log-agent   { color: #aaa; font-weight: 700; }
+        .log-state-running  { color: #00aaff; font-weight: 700; }
         .log-state-pending  { color: var(--amber); font-weight: 700; }
         .log-state-executed { color: var(--green); font-weight: 700; }
         .log-state-rejected { color: var(--red);   font-weight: 700; }
@@ -1145,6 +1146,7 @@ async function fetchState() {
             let logHtml = '';
             data.agent_logs.forEach(log => {
                 let stateClass = '';
+                if (log.state === 'Running')  stateClass = 'log-state-running';
                 if (log.state === 'Pending')  stateClass = 'log-state-pending';
                 if (log.state === 'Executed') stateClass = 'log-state-executed';
                 if (log.state === 'Rejected') stateClass = 'log-state-rejected';

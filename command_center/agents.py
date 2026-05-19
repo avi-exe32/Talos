@@ -101,6 +101,7 @@ class AnalystAgent:
     """
     def run(self, scout_alert: Dict[str, Any]) -> Dict[str, Any]:
         logger.info("[Analyst] Waking up. Querying inventory DB...")
+        db.log_agent_event("Analyst", "Running", {"status": "processing"})
         inventory = db.get_inventory()
         
         prompt = f"""
@@ -140,6 +141,7 @@ class BrokerAgent:
     """
     def run(self, analyst_report: Dict[str, Any]) -> Dict[str, Any]:
         logger.info("[Broker] Waking up. Querying backup vendors DB...")
+        db.log_agent_event("Broker", "Running", {"status": "processing"})
         backup_vendors = db.get_vendors(vendor_type="backup")
         
         prompt = f"""
@@ -178,6 +180,7 @@ class ForgeAgent:
     """
     def run(self, broker_report: Dict[str, Any]) -> Dict[str, Any]:
         logger.info("[Forge] Waking up. Generating API patch for selected vendor...")
+        db.log_agent_event("Forge", "Running", {"status": "processing"})
         
         # We need the vendor's API URL to generate the patch
         all_vendors = db.get_vendors()
