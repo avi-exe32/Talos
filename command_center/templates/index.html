@@ -198,7 +198,7 @@
             letter-spacing: 2px;
             font-variant-numeric: tabular-nums;
         }
-        #reset-demo-btn {
+        #reset-demo-btn, #vendor-portal-btn {
             padding: 4px 12px;
             font-family: 'JetBrains Mono', monospace;
             font-size: 0.65rem;
@@ -209,8 +209,11 @@
             border-radius: 2px;
             letter-spacing: 1px;
             transition: 0.2s;
+            margin-left: 8px;
         }
-        #reset-demo-btn:hover { color: #fff; border-color: #666; }
+        #reset-demo-btn:hover, #vendor-portal-btn:hover { color: #fff; border-color: #666; }
+        #vendor-portal-btn { color: #4a9eff; border-color: #4a9eff; }
+        #vendor-portal-btn:hover { color: #fff; border-color: #6bb3ff; background: rgba(74, 158, 255, 0.1); }
 
         /* ═══════════════════════════════════════════════
            HUD ROW
@@ -653,6 +656,7 @@
         </div>
         <div class="nav-right">
             <span id="utc-clock">00:00:00 UTC</span>
+            <button id="vendor-portal-btn">VENDOR PORTAL</button>
             <button id="reset-demo-btn">RESET DEMO</button>
         </div>
     </nav>
@@ -1239,6 +1243,15 @@ document.getElementById('approve-btn').addEventListener('click', async () => {
 
 // ═══════════════════════════════════════════
 // RESET BUTTON
+// ═══════════════════════════════════════════
+// VENDOR PORTAL BUTTON
+// ═══════════════════════════════════════════
+document.getElementById('vendor-portal-btn').addEventListener('click', () => {
+    window.open('https://talos-vsp-78550706553.asia-south1.run.app/docs', '_blank');
+});
+
+// ═══════════════════════════════════════════
+// RESET DEMO BUTTON
 // ═══════════════════════════════════════════
 document.getElementById('reset-demo-btn').addEventListener('click', async () => {
     if (confirm("Reset demo? This will wipe the agent log and revert to the primary vendor stream.")) {
