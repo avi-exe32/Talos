@@ -94,8 +94,15 @@ class TalosDaemon(threading.Thread):
         DAEMON_STATE["last_payload"] = payload
         DAEMON_STATE["last_poll_time"] = time.strftime("%Y-%m-%d %H:%M:%S")
 
-        # 3. Pass data to Scout Agent
-        scout_result = self.scout.process_payload(payload, http_error=http_error)
+        # 3. Pass data to Scout Agent (ONLY if pipeline hasn't been triggered)
+        # Once pipeline runs, Scout pauses until user approves
+        if self._pipeline_triggered:
+            # Pipeline is waiting for approval - don't check for anomalies
+            logger.debug("[Daemon] Pipeline pending approval. Scout monitoring paused.")
+            scout_result = {"status": "PAUSED", "reason": "Awaiting human authorization", "failures": self.scout.consecutive_failures}
+        else:
+            # Normal Scout monitoring
+            scout_result = self.scout.process_payload(payload, http_error=http_error)
         
         # 4. Update Global State for UI
         DAEMON_STATE["scout_status"] = scout_result["status"]

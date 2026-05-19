@@ -935,6 +935,7 @@ let brainTypeQueue  = [];
 let isBrainTyping   = false;
 let lastLogCount    = 0;
 let beepInterval    = null;
+let mitigationApproved = false;  // Client-side flag to prevent button reappearing
 
 function queueBrainText(text) {
     brainTypeQueue.push(text);
@@ -1172,7 +1173,8 @@ async function fetchState() {
         // 6. Execution Gate
         const gate    = document.getElementById('execution-gate');
         const appMain = document.getElementById('app-container');
-        if (data.has_pending) {
+        // Never show button again if user already approved once
+        if (data.has_pending && !mitigationApproved) {
             gate.style.display = 'flex';
             appMain.classList.add('dimmed');
         } else {
@@ -1190,6 +1192,10 @@ async function fetchState() {
 // ═══════════════════════════════════════════
 document.getElementById('approve-btn').addEventListener('click', async () => {
     initAudio();
+    
+    // Set client-side flag immediately to prevent button from reappearing
+    mitigationApproved = true;
+    
     const btn = document.getElementById('approve-btn');
     btn.textContent = "EXECUTING...";
     btn.style.opacity = "0.5";
@@ -1242,6 +1248,7 @@ document.getElementById('reset-demo-btn').addEventListener('click', async () => 
                 '<div style="color:#333;font-size:0.7rem;padding:8px;">> System reset. Awaiting audit logs...</div>';
             document.getElementById('brain-content').innerHTML = '';
             lastLogCount = 0;
+            mitigationApproved = false;  // Reset client-side approval flag
         } catch (err) {
             console.error("Failed to reset demo:", err);
         }

@@ -95,6 +95,10 @@ def approve_mitigation():
         # Now execute the mitigation
         new_url = db.execute_pending_mitigation()
         
+        # Resume Scout monitoring after approval
+        daemon._daemon_instance._pipeline_triggered = False
+        logger.info("[Approval] Scout monitoring resumed.")
+        
         return {"status": "success", "new_url": new_url}
     except Exception as e:
         # If execution fails, reset the flag
