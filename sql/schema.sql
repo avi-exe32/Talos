@@ -59,7 +59,7 @@ CREATE TABLE agent_log (
     agent_name      TEXT        NOT NULL
                         CHECK (agent_name IN ('Scout', 'Analyst', 'Broker', 'Forge')),
     lifecycle_state TEXT        NOT NULL DEFAULT 'Pending'
-                        CHECK (lifecycle_state IN ('Pending', 'Executed', 'Rejected')),
+                        CHECK (lifecycle_state IN ('Running', 'Pending', 'Executed', 'Rejected')),
     payload         JSONB,      -- structured agent output; NULL for simple events
     created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );

@@ -1,0 +1,13 @@
+[33m1de6eb7[m[33m ([m[1;36mHEAD[m[33m)[m HEAD@{0}: reset: moving to HEAD~1
+[33mb074a5b[m[33m ([m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m, [m[1;32mmain[m[33m)[m HEAD@{1}: checkout: moving from main to b074a5b
+[33mb074a5b[m[33m ([m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m, [m[1;32mmain[m[33m)[m HEAD@{2}: commit: Major ui changes and Api call changes
+[33m1de6eb7[m[33m ([m[1;36mHEAD[m[33m)[m HEAD@{3}: commit: Mitigation fix and model call fix.
+[33m1f59a95[m HEAD@{4}: commit: Audit log fic
+[33mcdc20c9[m HEAD@{5}: commit: Fixed mitigation
+[33m564f198[m HEAD@{6}: commit: feat: complete Phase 3 Command Center (FastAPI + Terminal UI)
+[33m776ed10[m HEAD@{7}: pull origin main --rebase --allow-unrelated-histories (finish): returning to refs/heads/main
+[33m776ed10[m HEAD@{8}: pull origin main --rebase --allow-unrelated-histories (pick): feat: complete Phase 1 and Phase 2 (DB schema, dual-connection setup, VSP deployment)
+[33m6281ea8[m HEAD@{9}: pull origin main --rebase --allow-unrelated-histories (start): checkout 6281ea82b62b8d3962bac5f797010d2c4801c13d
+[33me96619c[m HEAD@{10}: commit: feat: complete Phase 1 and Phase 2 (DB schema, dual-connection setup, VSP deployment)
+[33m76306c8[m HEAD@{11}: Branch: renamed refs/heads/main to refs/heads/main
+[33m76306c8[m HEAD@{13}: commit (initial): Initial commit
