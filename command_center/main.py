@@ -131,23 +131,83 @@ class ChatMessage(BaseModel):
 @app.post("/api/chat")
 def oracle_chat(body: ChatMessage):
     """
-    Stub endpoint for The Oracle chatbot.
-    Returns a mock AI response. Replace with a real LLM call in the next phase.
+    The Oracle - AI-powered assistant that explains Talos system operations.
+    Uses Gemini to provide dynamic, context-aware responses about the system.
     """
-    user_msg = body.message.strip().lower()
-    # Simple keyword-based mock responses for demo purposes
-    if any(k in user_msg for k in ["status", "state", "health"]):
-        reply = "All primary systems are nominal. Scout Agent is actively monitoring the vendor feed. No anomalies detected in the current cycle."
-    elif any(k in user_msg for k in ["vendor", "supply", "stream"]):
-        reply = "The primary vendor stream is authenticated and streaming clean inventory telemetry. Circuit-breaker threshold set at 3 consecutive failures."
-    elif any(k in user_msg for k in ["agent", "pipeline", "forge", "analyst", "broker"]):
-        reply = "The multi-agent pipeline is armed. On detection of supply chain corruption: Scout escalates → Analyst quantifies risk → Broker sources alternatives → Forge generates the patch. Awaiting your authorization."
-    elif any(k in user_msg for k in ["mitigation", "approve", "execute"]):
-        reply = "Human-in-the-loop gate is active. I cannot execute mitigations autonomously — that requires your explicit authorization via the AUTHORIZE MITIGATION control."
-    else:
-        reply = f"Acknowledged. Processing query: '{body.message}'. The Oracle is fully operational. Ask me about system status, agent pipeline, or vendor health."
+    try:
+        # Import Gemini components to create a text-only model for chat
+        from agents import project_id, region, model_name
+        import vertexai
+        from vertexai.generative_models import GenerativeModel
+        
+        if project_id is None or region is None:
+            return {"response": "The Oracle is currently offline. Gemini AI model is not configured. Please check your GCP credentials and model settings."}
+        
+        # Create a separate model instance for chat that returns plain text (not JSON)
+        chat_model = GenerativeModel(model_name)
+        
+        # Get current system state for context
+        current_state = daemon.DAEMON_STATE.copy()
+        recent_logs = db.get_recent_agent_logs(limit=5)
+        
+        # Build context about current system state
+        system_context = f"""
+        Current System State:
+        - Scout Status: {current_state.get('scout_status', 'UNKNOWN')}
+        - Scout Reason: {current_state.get('scout_reason', 'N/A')}
+        - Consecutive Failures: {current_state.get('consecutive_failures', 0)}
+        - Active URL: {current_state.get('current_url', 'N/A')}
+        - Last HTTP Status: {current_state.get('last_http_status', 'N/A')}
+        - Recent Agent Activity: {len(recent_logs)} logs in database
+        """
+        
+        prompt = f"""You are "The Oracle" - an AI assistant for the Talos autonomous supply chain defense system.
 
-    return {"response": reply}
+TALOS SYSTEM OVERVIEW:
+Talos is a multi-agent AI system that monitors supply chain vendor streams and automatically responds to disruptions.
+
+THE AGENTS:
+1. Scout Agent: Frontline monitor that watches the vendor data stream 24/7. Detects anomalies like HTTP failures, corrupted data, or zero quantities. Escalates after 3 consecutive failures.
+
+2. Analyst Agent: The mathematician. When Scout escalates, Analyst queries the inventory database to calculate:
+   - Hours until factory stockout
+   - Projected financial loss in USD
+   - Risk assessment summary
+
+3. Broker Agent: The procurement officer. Evaluates backup vendors from the database based on:
+   - Lead time (can they deliver before stockout?)
+   - Cost per unit
+   - Reliability score
+   Selects optimal vendor and drafts a Purchase Order.
+
+4. Forge Agent: The engineer. Generates the infrastructure patch to switch the system to the backup vendor's API endpoint.
+
+HUMAN-IN-THE-LOOP GATE:
+After all three agents complete their analysis, the system pauses and presents an "AUTHORIZE MITIGATION" button. The human operator must approve before the vendor switch executes. This ensures human oversight for critical supply chain decisions.
+
+{system_context}
+
+USER QUESTION: {body.message}
+
+Provide a helpful, medium-length explanation (2-3 paragraphs) that answers their question. Be technical but clear. If they ask about current status, use the system state above. Keep responses focused and informative, not too brief or too verbose.
+
+IMPORTANT: Write in plain, natural language. No markdown formatting, no backticks, no code blocks, no escape characters. Just clean, readable sentences like a human analyst would write."""
+
+        response = chat_model.generate_content(prompt)
+        reply = response.text.strip()
+        
+        # Clean up any markdown artifacts or escape characters
+        reply = reply.replace('```', '').replace('`', '')
+        reply = reply.replace('\\n', ' ').replace('\n\n', '\n')
+        reply = reply.replace('**', '').replace('__', '')
+        reply = ' '.join(reply.split())  # Normalize whitespace
+        
+        return {"response": reply}
+        
+    except Exception as e:
+        logger.error(f"Oracle chat error: {e}")
+        # Fallback response if Gemini fails
+        return {"response": "The Oracle is temporarily unavailable. Please try again in a moment."}
 
 if __name__ == "__main__":
     import uvicorn
